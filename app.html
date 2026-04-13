@@ -648,6 +648,17 @@
 </div>
 <input type="file" id="csvFileInput" accept=".csv,.txt,.tsv" style="display:none" onchange="handleCSVFile(this)">
 <script>
+  // Auto-apply stored update on launch
+  (function() {
+    var stored = localStorage.getItem('futuresAppUpdate');
+    if (stored) {
+      localStorage.removeItem('futuresAppUpdate');
+      localStorage.removeItem('futuresAppUpdateVersion');
+      document.open(); document.write(stored); document.close();
+      return;
+    }
+  })();
+
   let contacts = [];
   let savedLists = JSON.parse(localStorage.getItem('futuresSavedLists') || '[]');
   let csvRawData = null;
@@ -1432,23 +1443,18 @@
       if (!resp.ok) return;
       var info = await resp.json();
       if (info.version && compareVersions(info.version, APP_VERSION) > 0 && info.html_url) {
-        applyUpdate(info.html_url, info.version);
+        // Download the new HTML
+        var htmlResp = await fetch(info.html_url, {cache: 'no-store'});
+        if (!htmlResp.ok) return;
+        var newHtml = await htmlResp.text();
+        if (newHtml.indexOf('<!DOCTYPE') === -1 && newHtml.indexOf('<!doctype') === -1) return;
+        // Store in localStorage for apply on next load
+        localStorage.setItem('futuresAppUpdate', newHtml);
+        localStorage.setItem('futuresAppUpdateVersion', info.version);
+        document.getElementById('updateBanner').style.display = '';
+        document.getElementById('updateBanner').innerHTML = '\u2705 Update v' + info.version + ' ready! <strong>Relaunch the app</strong> to apply. <span style="float:right;cursor:pointer;opacity:0.8" onclick="this.parentElement.style.display=\'none\'">\u2715</span>';
       }
     } catch(e) { /* silently fail update check */ }
-  }
-
-  async function applyUpdate(htmlUrl, newVersion) {
-    try {
-      var resp = await fetch(PCO_PROXY.replace(/\/$/, '') + '/apply-update', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({url: htmlUrl})
-      });
-      if (resp.ok) {
-        document.getElementById('updateBanner').style.display = '';
-        document.getElementById('updateBanner').innerHTML = '✅ Updated to v' + (newVersion||'latest') + '! <strong>Relaunch the app</strong> to use the new version. <span style="float:right;cursor:pointer;opacity:0.8" onclick="this.parentElement.style.display=\'none\'">✕</span>';
-      }
-    } catch(e) { /* proxy not running or update failed - silently fail */ }
   }
 
   // Init
