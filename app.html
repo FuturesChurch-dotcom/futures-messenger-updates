@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Futures Messenger</title>
+<meta name="app-version" content="2.1.0">
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --sidebar: #111111;
+    --sidebar-hover: #1e1e1e;
+    --sidebar-active: #52ab7a;
+    --card: #ffffff;
+    --border: #e2e5ea;
+    --text: #111111;
+    --text-secondary: #6b7280;
+    --accent: #52ab7a;
+    --accent-hover: #479b6c;
+    --accent-light: rgba(82,171,122,0.08);
+    --accent-ring: rgba(82,171,122,0.2);
+    --success: #52ab7a;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; height: 100vh; overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  .sidebar {
+    width: 230px; background: var(--sidebar); color: white;
+    display: flex; flex-direction: column; padding: 20px 0; flex-shrink: 0;
+  }
+  .sidebar-logo {
+    padding: 0 20px 24px; font-size: 19px; font-weight: 700;
+    letter-spacing: -0.3px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 12px;
+  }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-item {
+    padding: 10px 16px; cursor: pointer; font-size: 14px; font-weight: 500;
+    display: flex; align-items: center; gap: 10px; transition: all 0.15s;
+    border-radius: 10px; margin: 2px 10px; color: rgba(255,255,255,0.7);
+  }
+  .nav-item:hover { background: var(--sidebar-hover); color: white; }
+  .nav-item.active { background: var(--sidebar-active); color: white; }
+  .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .nav-badge {
+    margin-left: auto; background: rgba(255,255,255,0.15); color: white;
+    font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 10px; min-width: 20px; text-align: center;
+  }
+  .nav-item.active .nav-badge { background: rgba(255,255,255,0.25); }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+  .header {
+    padding: 24px 32px 20px; background: var(--card);
+    border-bottom: 1px solid var(--border);
+  }
+  .header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+  .header p { color: var(--text-secondary); font-size: 13px; margin-top: 4px; }
+  .content { flex: 1; overflow-y: auto; padding: 24px 32px; min-height: 0; -webkit-overflow-scrolling: touch; }
+  .card {
+    background: var(--card); border-radius: 14px;
+    border: 1px solid var(--border); padding: 20px; margin-bottom: 16px;
+  }
+  .card-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+  .btn {
+    padding: 9px 20px; border: none; border-radius: 20em; font-size: 13px;
+    font-weight: 600; cursor: pointer; transition: all 0.15s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-secondary { background: #e8e8ed; color: var(--text); }
+  .btn-secondary:hover { background: #d5d5da; }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-success { background: var(--success); color: white; }
+  .btn-sm { padding: 5px 14px; font-size: 12px; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn-outline {
+    background: transparent; color: var(--accent); border: 1.5px solid var(--accent);
+    padding: 8px 18px; border-radius: 20em; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .btn-outline:hover { background: var(--accent-light); }
+  input[type="text"], input[type="tel"], input[type="password"], textarea, select {
+    width: 100%; padding: 10px 14px; border: 1.5px solid var(--border);
+    border-radius: 10px; font-size: 14px; font-family: inherit;
+    outline: none; transition: border-color 0.15s, box-shadow 0.15s; background: white;
+  }
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring);
+  }
+  textarea { resize: vertical; min-height: 100px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .form-group { margin-bottom: 16px; }
+  .form-row { display: flex; gap: 12px; }
+  .form-row .form-group { flex: 1; }
+  .hint { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+  .contact-table { width: 100%; border-collapse: collapse; }
+  .contact-table th {
+    text-align: left; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--text-secondary); padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .contact-table td { padding: 10px 12px; font-size: 14px; border-bottom: 1px solid #f0f0f2; }
+  .contact-table tr:hover td { background: var(--accent-light); }
+  .contact-table input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); }
+  .tag { display: inline-block; padding: 2px 10px; border-radius: 20em; font-size: 11px; font-weight: 600; }
+  .tag-csv { background: #ecfdf5; color: #059669; }
+  .tag-manual { background: #f0e8fd; color: #7c3aed; }
+  .tag-contacts { background: #ecfdf5; color: var(--accent); }
+  .empty-state { text-align: center; padding: 48px 24px; color: var(--text-secondary); }
+  .empty-state svg { width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.3; }
+  .empty-state h3 { font-size: 16px; color: var(--text); margin-bottom: 8px; }
+  .empty-state p { font-size: 13px; }
+  .progress-bar { width: 100%; height: 6px; background: #e8e8ed; border-radius: 3px; overflow: hidden; margin: 12px 0; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s ease; width: 0%; }
+  .progress-fill.success { background: var(--success); }
+  .progress-fill.error { background: var(--danger); }
+  .msg-preview {
+    background: #ecfdf5; border-radius: 16px; padding: 10px 14px;
+    font-size: 14px; max-width: 80%; margin-bottom: 8px; line-height: 1.4;
+    border: 1px solid rgba(82,171,122,0.15);
+  }
+  .msg-preview-name { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+  .msg-preview-phone { font-size: 11px; color: var(--text-secondary); }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .status-dot.pending { background: var(--border); }
+  .status-dot.sending { background: var(--warning); animation: pulse 1s infinite; }
+  .status-dot.sent { background: var(--success); }
+  .status-dot.failed { background: var(--danger); }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .template-chip {
+    display: inline-block; background: var(--accent-light); color: var(--accent);
+    padding: 3px 10px; border-radius: 20em; font-size: 12px; font-weight: 600;
+    cursor: pointer; margin: 2px; transition: background 0.15s; border: 1px solid rgba(82,171,122,0.15);
+  }
+  .template-chip:hover { background: rgba(82,171,122,0.15); }
+  .page { display: none; flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
+  .page.active { display: flex; }
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5); display: none;
+    align-items: center; justify-content: center; z-index: 100;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: white; border-radius: 18px; padding: 28px;
+    max-width: 500px; width: 90%; box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+  }
+  .modal h2 { font-size: 18px; margin-bottom: 16px; }
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; background: var(--sidebar);
+    color: white; padding: 12px 20px; border-radius: 12px; font-size: 14px;
+    font-weight: 500; z-index: 200; transform: translateY(100px); opacity: 0; transition: all 0.3s;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .send-result { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f2; gap: 10px; }
+  .send-result-name { font-weight: 600; font-size: 14px; }
+  .send-result-phone { font-size: 12px; color: var(--text-secondary); }
+  .send-result-status { margin-left: auto; font-size: 12px; font-weight: 600; }
+  .send-result-status.sent { color: var(--success); }
+  .send-result-status.failed { color: var(--danger); }
+  .send-result-status.pending { color: var(--text-secondary); }
+  .col-mapper { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
+  .col-mapper label { min-width: 100px; margin-bottom: 0; }
+  .col-mapper select { width: auto; min-width: 150px; }
+  .saved-tpl {
+    padding: 14px; border: 1.5px solid var(--border); border-radius: 12px;
+    margin-bottom: 10px; cursor: pointer; transition: all 0.15s; position: relative;
+  }
+  .saved-tpl:hover { border-color: var(--accent); background: var(--accent-light); }
+  .saved-tpl-area { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent); margin-bottom: 4px; }
+  .saved-tpl-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .saved-tpl-preview { font-size: 13px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .saved-tpl-actions { position: absolute; top: 12px; right: 12px; display: flex; gap: 4px; }
+  .saved-tpl-actions button { background: none; border: none; cursor: pointer; padding: 4px; color: var(--text-secondary); font-size: 16px; border-radius: 6px; }
+  .saved-tpl-actions button:hover { background: #f0f0f2; }
+  .profile-card {
+    background: linear-gradient(135deg, #111 0%, #1a2e22 100%);
+    border-radius: 14px; padding: 20px; color: white; margin-bottom: 16px; border: none;
+  }
+  .profile-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: rgba(255,255,255,0.5); margin-bottom: 4px; }
+  .profile-card .value { font-size: 15px; font-weight: 600; }
+  .section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-secondary); margin-bottom: 10px; margin-top: 4px; }
+  .mode-toggle { display: flex; gap: 4px; background: #e8e8ed; border-radius: 20em; padding: 3px; margin-bottom: 16px; width: fit-content; }
+  .mode-toggle button { padding: 7px 18px; border: none; border-radius: 20em; font-size: 13px; font-weight: 600; cursor: pointer; background: transparent; color: var(--text-secondary); transition: all 0.15s; }
+  .mode-toggle button.active { background: white; color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .mode-badge { display: inline-block; padding: 1px 8px; border-radius: 20em; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .mode-badge.custom { background: #e8e8ed; color: var(--text-secondary); }
+  .mode-badge.generated { background: rgba(82,171,122,0.12); color: var(--accent); }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c0c0c5; border-radius: 3px; }
+</style>
+</head>
+<body><div class="sidebar">
+  <div class="sidebar-logo"><span>Futures</span> Messenger</div>
+  <div class="nav-item active" data-page="contacts" onclick="showPage('contacts')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Contacts <span class="nav-badge" id="contactBadge">0</span>
+  </div>
+  <div class="nav-item" data-page="compose" onclick="showPage('compose')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    Compose
+  </div>
+  <div class="nav-item" data-page="send" onclick="showPage('send')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    Send
+  </div>
+  <div class="nav-item" data-page="templates" onclick="showPage('templates')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    Templates <span class="nav-badge" id="templateBadge">0</span>
+  </div>
+  <div class="nav-item" data-page="settings" onclick="showPage('settings')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    Settings
+  </div>
+  <div style="margin-top:auto;padding:16px 20px;font-size:11px;color:rgba(255,255,255,0.25);border-top:1px solid rgba(255,255,255,0.06)">
+    Futures Messenger v2.0<br><span style="font-size:10px">Developed by Benjamin Evans</span>
+  </div>
+</div>
+<div class="main">
+
+  <!-- CONTACTS PAGE -->
+  <div class="page active" id="page-contacts">
+    <div class="header"><h1>Contacts</h1><p>Import from a PCO People CSV, add manually, or pull from Mac Contacts</p></div>
+    <div class="content">
+      <div class="card">
+        <div class="btn-row" style="margin-bottom:16px">
+          <button class="btn btn-primary" onclick="triggerCSVImport()">Import CSV</button>
+          <button class="btn btn-secondary" onclick="openAddContact()">Add Manually</button>
+          <button class="btn btn-secondary" onclick="importMacContacts()">From Mac Contacts</button>
+          <button class="btn btn-danger btn-sm" onclick="clearSelected()" id="btnClearSelected" style="display:none">Remove Selected</button>
+        </div>
+        <div id="contactsEmpty" class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          <h3>No contacts yet</h3>
+          <p>Import a PCO People CSV, add contacts manually, or pull from your Mac Contacts</p>
+        </div>
+        <div id="contactsTable" style="display:none">
+          <table class="contact-table">
+            <thead><tr><th><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this.checked)"></th><th>Name</th><th>Phone</th><th>Source</th><th></th></tr></thead>
+            <tbody id="contactsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPOSE PAGE -->
+  <div class="page" id="page-compose">
+    <div class="header"><h1>Compose Message</h1><p>Write your message using placeholders to personalize each one</p></div>
+    <div class="content">
+      <div class="card">
+        <div class="mode-toggle">
+          <button class="mode-toggle-btn active" onclick="switchComposeMode('custom')" data-mode="custom">Custom Message</button>
+          <button class="mode-toggle-btn" onclick="switchComposeMode('generated')" data-mode="generated">AI Generated</button>
+        </div>
+
+        <!-- CUSTOM MODE -->
+        <div id="customMode" class="compose-mode">
+          <div class="card-title">Message Template</div>
+          <div class="form-group">
+            <label>Your Message</label>
+            <textarea id="messageTemplate" rows="5" placeholder="Hey {FirstName}! Just a reminder — this Sunday's service starts at 10am. We'd love to see you there!"></textarea>
+            <div class="hint">
+              Available placeholders:
+              <span class="template-chip" onclick="insertPlaceholder('{FirstName}')">{FirstName}</span>
+              <span class="template-chip" onclick="insertPlaceholder('{LastName}')">{LastName}</span>
+              <span class="template-chip" onclick="insertPlaceholder('{Phone}')">{Phone}</span>
+              <span id="customPlaceholders"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- GENERATED MODE -->
+        <div id="generatedMode" class="compose-mode" style="display:none">
+          <div class="card-title">AI Message Generator</div>
+          <div id="aiRoleHint" style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;display:none"></div>
+          <div class="form-group">
+            <label>Describe what you want to say</label>
+            <textarea id="aiPrompt" rows="3" placeholder="e.g., Remind everyone about the potluck dinner next Friday at 6pm. Keep it warm and friendly."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Example message (optional, helps set the tone)</label>
+            <input type="text" id="aiExample" placeholder="e.g., Hey Sarah! Don't forget about our potluck this Friday at 6...">
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="generateAIMessage()" id="btnGenerate">Generate Message</button>
+          </div>
+          <div class="hint" style="margin-top:8px">Requires a Gemini API key in Settings (free at aistudio.google.com)</div>
+
+          <!-- AI Generated Result Preview -->
+          <div id="aiResultCard" style="margin-top:16px;display:none;padding:16px;background:#ecfdf5;border-radius:12px;border:1px solid rgba(82,171,122,0.15)">
+            <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:8px">GENERATED MESSAGE</div>
+            <div id="aiGeneratedText" style="font-size:14px;line-height:1.5;color:var(--text);margin-bottom:12px"></div>
+            <button class="btn btn-primary" onclick="useGeneratedMessage()">Use This Message</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SHARED PREVIEW SECTION -->
+      <div class="card" id="previewCard" style="display:none">
+        <div class="card-title">Preview (first 3 recipients)</div>
+        <div id="messagePreview"></div>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:8px">
+        <button class="btn btn-outline" onclick="loadTemplateIntoCompose()" id="btnLoadTemplate" style="display:none">Load Template</button>
+        <button class="btn btn-secondary" onclick="previewMessages()">Preview Messages</button>
+        <button class="btn btn-primary" onclick="showPage('send')">Continue to Send →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEND PAGE -->
+  <div class="page" id="page-send">
+    <div class="header"><h1>Send Messages</h1><p>Review and send your personalized messages</p></div>
+    <div class="content">
+      <div class="card" id="sendReadyCard">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div>
+            <div class="card-title" style="margin-bottom:2px">Ready to Send</div>
+            <div style="font-size:13px;color:var(--text-secondary)">
+              <span id="sendCount">0</span> personalized messages will be sent via iMessage
+            </div>
+          </div>
+          <button class="btn btn-success" onclick="startSending()" id="btnSend" style="padding:12px 28px;font-size:15px">Send All Messages</button>
+        </div>
+        <div class="progress-bar" id="sendProgressBar" style="display:none"><div class="progress-fill" id="sendProgressFill"></div></div>
+        <div id="sendStatus" style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;display:none"></div>
+        <div id="sendResults"></div>
+      </div>
+    </div>
+  </div>
+  <!-- TEMPLATES PAGE -->
+  <div class="page" id="page-templates">
+    <div class="header"><h1>Saved Templates</h1><p>Save and reuse message templates for different areas and occasions</p></div>
+    <div class="content">
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="openSaveTemplate()">+ New Template</button>
+        <select id="tplFilterArea" onchange="renderTemplates()" style="width:auto;min-width:150px;padding:8px 12px;border-radius:20em;font-size:13px;font-weight:600">
+          <option value="">All Areas</option>
+        </select>
+      </div>
+      <div id="templatesEmpty" class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <h3>No saved templates</h3>
+        <p>Save message templates for different ministry areas so your team can reuse them</p>
+      </div>
+      <div id="templatesList"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS PAGE -->
+  <div class="page" id="page-settings">
+    <div class="header"><h1>Settings</h1><p>Configure your profile and messaging preferences</p></div>
+    <div class="content">
+      <div class="profile-card" id="profileDisplay">
+        <div style="display:flex;gap:24px;flex-wrap:wrap">
+          <div><div class="label">Your Name</div><div class="value" id="profileNameDisplay">Not set</div></div>
+          <div><div class="label">Role</div><div class="value" id="profileRoleDisplay">Not set</div></div>
+          <div><div class="label">Ministry Area</div><div class="value" id="profileAreaDisplay">Not set</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Your Profile</div>
+        <div class="hint" style="margin-bottom:12px;margin-top:-4px">This info is sent to AI when generating messages, so it can write in context.</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Your Name</label>
+            <input type="text" id="staffName" placeholder="e.g., Pastor Dave" onchange="saveSettings()">
+          </div>
+          <div class="form-group">
+            <label>Your Role</label>
+            <select id="staffRole" onchange="saveSettings()">
+              <option value="">Select role...</option>
+              <option value="Senior Pastor">Senior Pastor</option>
+              <option value="Associate Pastor">Associate Pastor</option>
+              <option value="Campus Pastor">Campus Pastor</option>
+              <option value="Worship Leader">Worship Leader</option>
+              <option value="Youth Pastor">Youth Pastor</option>
+              <option value="Kids Pastor">Kids Pastor</option>
+              <option value="Small Groups Leader">Small Groups Leader</option>
+              <option value="Admin/Operations">Admin/Operations</option>
+              <option value="Events Coordinator">Events Coordinator</option>
+              <option value="Volunteer Coordinator">Volunteer Coordinator</option>
+              <option value="Communications">Communications</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Ministry Area</label>
+            <select id="staffArea" onchange="saveSettings()">
+              <option value="">Select area...</option>
+              <option value="General/Churchwide">General/Churchwide</option>
+              <option value="Worship">Worship</option>
+              <option value="Youth">Youth</option>
+              <option value="Kids">Kids</option>
+              <option value="Young Adults">Young Adults</option>
+              <option value="Small Groups">Small Groups</option>
+              <option value="Connect/Welcome">Connect/Welcome</option>
+              <option value="Events">Events</option>
+              <option value="Missions">Missions</option>
+              <option value="Pastoral Care">Pastoral Care</option>
+              <option value="Creative/Media">Creative/Media</option>
+              <option value="Operations">Operations</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Custom Role (if Other)</label>
+            <input type="text" id="staffCustomRole" placeholder="e.g., Outreach Director" onchange="saveSettings()">
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:500">
+            <input type="checkbox" id="signMessages" checked onchange="saveSettings()" style="width:18px;height:18px;cursor:pointer">
+            Sign AI messages with my name
+          </label>
+          <div class="hint" style="margin-top:4px">When enabled, AI-generated messages will end with your name.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Gemini API Key (Free AI Message Generation)</div>
+        <div class="form-group">
+          <label>API Key</label>
+          <input type="password" id="apiKey" placeholder="AIza..." onchange="saveSettings()">
+          <div class="hint">Get your free key from <strong>aistudio.google.com</strong> → Get API Key. No credit card needed.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Message Sending</div>
+        <div class="form-group">
+          <label>Delay between messages (seconds)</label>
+          <input type="text" id="sendDelay" value="0.5" style="width:100px" onchange="saveSettings()">
+          <div class="hint">Small delay to let Messages.app process each send. 0.5s recommended.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Auto-Updates</div>
+        <div class="form-group">
+          <label>Update URL</label>
+          <input type="text" id="updateUrl" placeholder="https://yoursite.com/update.json" onchange="saveSettings()">
+          <div class="hint">Points to a JSON file with version info. The app checks on launch and auto-updates <code>app.html</code> when a new version is available.</div>
+        </div>
+        <div style="margin-top:8px;font-size:13px;color:var(--text-secondary)">Current version: <strong id="versionDisplay"></strong></div>
+      </div>
+      <div class="card">
+        <div class="card-title">About</div>
+        <p style="font-size:14px;line-height:1.6;color:var(--text-secondary)">
+          Futures Messenger sends personalized iMessages and SMS texts through the Messages app on your Mac.
+          Your Mac must be signed into iMessage, and for SMS, your iPhone must be linked via Text Message Forwarding.
+        </p>
+      </div>
+      <div style="text-align:center;padding:16px 0;color:#bbb;font-size:12px;letter-spacing:0.3px">Developed by Benjamin Evans</div>
+    </div>
+  </div>
+</div>
+<!-- Add Contact Modal -->
+<div class="modal-overlay" id="addContactModal">
+  <div class="modal">
+    <h2>Add Contact</h2>
+    <div class="form-row">
+      <div class="form-group"><label>First Name</label><input type="text" id="addFirstName" placeholder="John"></div>
+      <div class="form-group"><label>Last Name</label><input type="text" id="addLastName" placeholder="Smith"></div>
+    </div>
+    <div class="form-group"><label>Phone Number</label><input type="tel" id="addPhone" placeholder="+1 (555) 123-4567"></div>
+    <div class="btn-row" style="justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-secondary" onclick="closeModal('addContactModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addManualContact()">Add Contact</button>
+    </div>
+  </div>
+</div>
+
+<!-- CSV Column Mapper Modal -->
+<div class="modal-overlay" id="csvMapperModal">
+  <div class="modal">
+    <h2>Map CSV Columns</h2>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Map your CSV columns to the right fields. PCO People columns are auto-detected.</p>
+    <div id="csvMapperContent"></div>
+    <div class="btn-row" style="justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-secondary" onclick="closeModal('csvMapperModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="applyCSVMapping()">Import Contacts</button>
+    </div>
+  </div>
+</div>
+
+<!-- Save Template Modal -->
+<div class="modal-overlay" id="saveTemplateModal">
+  <div class="modal">
+    <h2 id="tplModalTitle">Save Template</h2>
+    <div class="mode-toggle" style="margin-bottom:16px">
+      <button class="mode-toggle-btn active" onclick="switchTemplateMode('custom')" data-mode="custom">Custom</button>
+      <button class="mode-toggle-btn" onclick="switchTemplateMode('generated')" data-mode="generated">Generated</button>
+    </div>
+
+    <!-- CUSTOM TEMPLATE MODE -->
+    <div id="customTemplateMode">
+      <div class="form-group"><label>Template Name</label><input type="text" id="tplName" placeholder="e.g., Sunday Service Reminder"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Ministry Area</label>
+          <select id="tplArea">
+            <option value="General">General</option>
+            <option value="Worship">Worship</option>
+            <option value="Youth">Youth</option>
+            <option value="Kids">Kids</option>
+            <option value="Young Adults">Young Adults</option>
+            <option value="Small Groups">Small Groups</option>
+            <option value="Connect/Welcome">Connect/Welcome</option>
+            <option value="Events">Events</option>
+            <option value="Missions">Missions</option>
+            <option value="Pastoral Care">Pastoral Care</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="tplType">
+            <option value="Reminder">Reminder</option>
+            <option value="Invitation">Invitation</option>
+            <option value="Follow-up">Follow-up</option>
+            <option value="Thank You">Thank You</option>
+            <option value="Announcement">Announcement</option>
+            <option value="Check-in">Check-in</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label>Message Text</label><textarea id="tplText" rows="4" placeholder="Hey {FirstName}! ..."></textarea>
+        <div class="hint" style="margin-top:8px">
+          Placeholders: <span class="template-chip" onclick="insertTplPlaceholder('{FirstName}')">{FirstName}</span>
+          <span class="template-chip" onclick="insertTplPlaceholder('{LastName}')">{LastName}</span>
+          <span class="template-chip" onclick="insertTplPlaceholder('{Phone}')">{Phone}</span>
+        </div>
+      </div>
+      <div class="form-group"><label>Example (optional)</label><input type="text" id="tplExample" placeholder="Example of the writing style"></div>
+    </div>
+
+    <!-- GENERATED TEMPLATE MODE -->
+    <div id="generatedTemplateMode" style="display:none">
+      <div class="form-group"><label>Template Name</label><input type="text" id="tplNameGen" placeholder="e.g., Sunday Service Reminder"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Ministry Area</label>
+          <select id="tplAreaGen">
+            <option value="General">General</option>
+            <option value="Worship">Worship</option>
+            <option value="Youth">Youth</option>
+            <option value="Kids">Kids</option>
+            <option value="Young Adults">Young Adults</option>
+            <option value="Small Groups">Small Groups</option>
+            <option value="Connect/Welcome">Connect/Welcome</option>
+            <option value="Events">Events</option>
+            <option value="Missions">Missions</option>
+            <option value="Pastoral Care">Pastoral Care</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="tplTypeGen">
+            <option value="Reminder">Reminder</option>
+            <option value="Invitation">Invitation</option>
+            <option value="Follow-up">Follow-up</option>
+            <option value="Thank You">Thank You</option>
+            <option value="Announcement">Announcement</option>
+            <option value="Check-in">Check-in</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label>What should this message be about?</label><textarea id="tplDescription" rows="3" placeholder="e.g., Remind the youth group about the upcoming retreat and get them excited about it"></textarea></div>
+      <div class="form-group"><label>Example of the tone/style (optional)</label><input type="text" id="tplExampleGen" placeholder="e.g., Hey everyone! Can't wait to see you at the beach cleanup this weekend..."></div>
+      <div class="hint" style="background:#ecfdf5;padding:10px;border-radius:8px;margin-bottom:16px">AI will generate a fresh message each time you use this template</div>
+    </div>
+
+    <div class="btn-row" style="justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-secondary" onclick="closeModal('saveTemplateModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTemplate()">Save Template</button>
+    </div>
+  </div>
+</div>
+
+<!-- Template Picker Modal -->
+<div class="modal-overlay" id="tplPickerModal">
+  <div class="modal" style="max-width:550px">
+    <h2>Load Template</h2>
+    <div id="tplPickerList" style="max-height:400px;overflow-y:auto"></div>
+    <div class="btn-row" style="justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-secondary" onclick="closeModal('tplPickerModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="updateBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#52ab7a;color:#fff;padding:10px 20px;text-align:center;font-weight:600;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.2);cursor:pointer" onclick="document.getElementById('updateBanner').style.display='none'">
+  🔄 Update installed! Quit and reopen Futures Messenger to use the latest version. <span style="opacity:0.8;font-weight:400">(click to dismiss)</span>
+</div>
+<input type="file" id="csvFileInput" accept=".csv,.txt,.tsv" style="display:none" onchange="handleCSVFile(this)">
+<script>
+  let contacts = [];
+  let csvRawData = null;
+  let csvHeaders = [];
+  let sendingInProgress = false;
+  let savedTemplates = JSON.parse(localStorage.getItem('futuresTemplates') || '[]');
+  let editingTplIdx = -1;
+  let currentComposeMode = 'custom';
+  let currentTemplateMode = 'custom';
+  let aiGeneratedMessage = '';
+
+  // ===== SETTINGS PERSISTENCE =====
+  function saveSettings() {
+    const s = {
+      staffName: document.getElementById('staffName').value,
+      staffRole: document.getElementById('staffRole').value,
+      staffArea: document.getElementById('staffArea').value,
+      staffCustomRole: document.getElementById('staffCustomRole').value,
+      apiKey: document.getElementById('apiKey').value,
+      sendDelay: document.getElementById('sendDelay').value,
+      signMessages: document.getElementById('signMessages').checked,
+      updateUrl: document.getElementById('updateUrl').value
+    };
+    localStorage.setItem('futuresSettings', JSON.stringify(s));
+    localStorage.setItem('futuresUpdateUrl', s.updateUrl || '');
+    updateProfileDisplay();
+  }
+  function loadSettings() {
+    try {
+      const s = JSON.parse(localStorage.getItem('futuresSettings') || '{}');
+      if (s.staffName) document.getElementById('staffName').value = s.staffName;
+      if (s.staffRole) document.getElementById('staffRole').value = s.staffRole;
+      if (s.staffArea) document.getElementById('staffArea').value = s.staffArea;
+      if (s.staffCustomRole) document.getElementById('staffCustomRole').value = s.staffCustomRole;
+      if (s.apiKey) document.getElementById('apiKey').value = s.apiKey;
+      if (s.sendDelay) document.getElementById('sendDelay').value = s.sendDelay;
+      document.getElementById('signMessages').checked = s.signMessages !== false;
+      if (s.updateUrl) document.getElementById('updateUrl').value = s.updateUrl;
+    } catch(e) {}
+    updateProfileDisplay();
+  }
+  function updateProfileDisplay() {
+    const name = document.getElementById('staffName').value || 'Not set';
+    const role = document.getElementById('staffRole').value === 'Other'
+      ? (document.getElementById('staffCustomRole').value || 'Other')
+      : (document.getElementById('staffRole').value || 'Not set');
+    const area = document.getElementById('staffArea').value || 'Not set';
+    document.getElementById('profileNameDisplay').textContent = name;
+    document.getElementById('profileRoleDisplay').textContent = role;
+    document.getElementById('profileAreaDisplay').textContent = area;
+    const hint = document.getElementById('aiRoleHint');
+    if (role !== 'Not set' || area !== 'Not set') {
+      hint.style.display = '';
+      var signOn = document.getElementById('signMessages').checked;
+      hint.innerHTML = 'AI will write as <strong>' + esc(role) + '</strong>' + (area !== 'Not set' ? ' for <strong>' + esc(area) + '</strong>' : '') + (name !== 'Not set' && signOn ? ' (signing as ' + esc(name) + ')' : '');
+    } else { hint.style.display = 'none'; }
+    document.getElementById('btnLoadTemplate').style.display = savedTemplates.length > 0 ? '' : 'none';
+  }
+  function getStaffContext() {
+    const name = document.getElementById('staffName').value;
+    const role = document.getElementById('staffRole').value === 'Other'
+      ? document.getElementById('staffCustomRole').value
+      : document.getElementById('staffRole').value;
+    const area = document.getElementById('staffArea').value;
+    let ctx = '';
+    if (role) ctx += 'The sender is a ' + role + ' at Futures Church. ';
+    if (area) ctx += 'They are messaging for the ' + area + ' ministry area. ';
+    if (name && document.getElementById('signMessages').checked) ctx += 'Sign the message as ' + name + '. ';
+    return ctx;
+  }
+
+  // ===== PAGE NAV =====
+  function showPage(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    document.querySelector('.nav-item[data-page="'+page+'"]').classList.add('active');
+    if (page === 'send') updateSendPage();
+    if (page === 'compose') { updatePlaceholders(); updateProfileDisplay(); }
+    if (page === 'templates') renderTemplates();
+  }
+
+  // ===== COMPOSE MODE TOGGLE =====
+  function switchComposeMode(mode) {
+    currentComposeMode = mode;
+    document.querySelectorAll('.mode-toggle-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('[data-mode="'+mode+'"]').classList.add('active');
+    document.getElementById('customMode').style.display = mode === 'custom' ? '' : 'none';
+    document.getElementById('generatedMode').style.display = mode === 'generated' ? '' : 'none';
+  }
+
+  // ===== TEMPLATE MODE TOGGLE =====
+  function switchTemplateMode(mode) {
+    currentTemplateMode = mode;
+    document.querySelectorAll('#saveTemplateModal .mode-toggle-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('#saveTemplateModal [data-mode="'+mode+'"]').classList.add('active');
+    document.getElementById('customTemplateMode').style.display = mode === 'custom' ? '' : 'none';
+    document.getElementById('generatedTemplateMode').style.display = mode === 'generated' ? '' : 'none';
+  }
+
+  // ===== CONTACTS =====
+  function updateContactsUI() {
+    const badge = document.getElementById('contactBadge');
+    const empty = document.getElementById('contactsEmpty');
+    const table = document.getElementById('contactsTable');
+    const body = document.getElementById('contactsBody');
+    const selected = contacts.filter(c => c.selected);
+    badge.textContent = contacts.length;
+    document.getElementById('btnClearSelected').style.display = selected.length > 0 ? '' : 'none';
+    if (contacts.length === 0) { empty.style.display = ''; table.style.display = 'none'; return; }
+    empty.style.display = 'none'; table.style.display = '';
+    body.innerHTML = contacts.map((c, i) =>
+      '<tr><td><input type="checkbox" '+(c.selected?'checked':'')+' onchange="toggleContact('+i+',this.checked)"></td>' +
+      '<td><strong>'+esc(c.firstName)+'</strong> '+esc(c.lastName||'')+'</td>' +
+      '<td>'+esc(c.phone)+'</td>' +
+      '<td><span class="tag tag-'+c.source+'">'+c.source+'</span></td>' +
+      '<td><button class="btn btn-sm btn-secondary" onclick="removeContact('+i+')">Remove</button></td></tr>'
+    ).join('');
+  }
+  function toggleContact(i, checked) { contacts[i].selected = checked; updateContactsUI(); }
+  function toggleSelectAll(checked) { contacts.forEach(c => c.selected = checked); updateContactsUI(); }
+  function removeContact(i) { contacts.splice(i, 1); updateContactsUI(); }
+  function clearSelected() { contacts = contacts.filter(c => !c.selected); updateContactsUI(); }
+
+  function openAddContact() {
+    document.getElementById('addFirstName').value = '';
+    document.getElementById('addLastName').value = '';
+    document.getElementById('addPhone').value = '';
+    document.getElementById('addContactModal').classList.add('show');
+  }
+  function addManualContact() {
+    const fn = document.getElementById('addFirstName').value.trim();
+    const ln = document.getElementById('addLastName').value.trim();
+    const ph = document.getElementById('addPhone').value.trim();
+    if (!fn || !ph) { showToast('First name and phone are required'); return; }
+    contacts.push({ firstName: fn, lastName: ln, phone: normalizePhone(ph), selected: true, source: 'manual', extra: {} });
+    closeModal('addContactModal'); updateContactsUI(); showToast('Contact added');
+  }
+
+  function triggerCSVImport() {
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.native) {
+      window.webkit.messageHandlers.native.postMessage(JSON.stringify({ action: 'pickCSV' }));
+    } else { document.getElementById('csvFileInput').click(); }
+  }
+  function handleCSVFile(input) {
+    const file = input.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) { csvLoaded(e.target.result); };
+    reader.readAsText(file); input.value = '';
+  }
+  function csvLoaded(text) {
+    const lines = text.trim().split(/\r?\n/);
+    if (lines.length < 2) { showToast('CSV file is empty or has no data rows'); return; }
+    const delimiters = [',', '\t', ';', '|'];
+    let bestDelim = ',', bestCount = 0;
+    for (const d of delimiters) {
+      const count = (lines[0].match(new RegExp('\\' + d, 'g')) || []).length;
+      if (count > bestCount) { bestCount = count; bestDelim = d; }
+    }
+    csvHeaders = parseCSVRow(lines[0], bestDelim);
+    csvRawData = lines.slice(1).map(line => parseCSVRow(line, bestDelim)).filter(row => row.length >= csvHeaders.length);
+    showCSVMapper(autoMapColumns(csvHeaders));
+  }
+  function parseCSVRow(line, delim) {
+    const result = []; let current = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQ) {
+        if (ch === '"' && line[i+1] === '"') { current += '"'; i++; }
+        else if (ch === '"') inQ = false;
+        else current += ch;
+      } else {
+        if (ch === '"') inQ = true;
+        else if (ch === delim) { result.push(current.trim()); current = ''; }
+        else current += ch;
+      }
+    }
+    result.push(current.trim()); return result;
+  }
+  function autoMapColumns(headers) {
+    const m = { firstName: -1, lastName: -1, phone: -1 };
+    headers.forEach((h, i) => {
+      const low = h.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (['firstname','first','fname','givenname','name','nickname'].includes(low) && m.firstName < 0) m.firstName = i;
+      if (['lastname','last','lname','surname','familyname'].includes(low) && m.lastName < 0) m.lastName = i;
+      if (['phone','phonenumber','mobile','cell','cellphone','tel','telephone','number','mobilephone','homephone','primaryphone','cellphonenumber','mobilephonenumber','homephonenumber','phonenumbermobile','phonenumberhome'].includes(low) && m.phone < 0) m.phone = i;
+    });
+    return m;
+  }
+  function showCSVMapper(mapping) {
+    const content = document.getElementById('csvMapperContent');
+    const options = csvHeaders.map((h, i) => '<option value="'+i+'">'+esc(h)+'</option>').join('');
+    const none = '<option value="-1">(none)</option>';
+    content.innerHTML =
+      '<div class="col-mapper"><label>First Name</label><select id="mapFirstName">'+none+options+'</select></div>' +
+      '<div class="col-mapper"><label>Last Name</label><select id="mapLastName">'+none+options+'</select></div>' +
+      '<div class="col-mapper"><label>Phone</label><select id="mapPhone">'+none+options+'</select></div>' +
+      '<p style="font-size:12px;color:var(--text-secondary);margin-top:12px">'+csvRawData.length+' rows found. All other columns available as placeholders.</p>';
+    if (mapping.firstName >= 0) document.getElementById('mapFirstName').value = mapping.firstName;
+    if (mapping.lastName >= 0) document.getElementById('mapLastName').value = mapping.lastName;
+    if (mapping.phone >= 0) document.getElementById('mapPhone').value = mapping.phone;
+    document.getElementById('csvMapperModal').classList.add('show');
+  }
+  function applyCSVMapping() {
+    const fnIdx = parseInt(document.getElementById('mapFirstName').value);
+    const lnIdx = parseInt(document.getElementById('mapLastName').value);
+    const phIdx = parseInt(document.getElementById('mapPhone').value);
+    if (phIdx < 0) { showToast('Phone column is required'); return; }
+    let imported = 0;
+    for (const row of csvRawData) {
+      const phone = normalizePhone(row[phIdx] || '');
+      if (!phone) continue;
+      let firstName = fnIdx >= 0 ? (row[fnIdx] || '') : '';
+      let lastName = lnIdx >= 0 ? (row[lnIdx] || '') : '';
+      if (firstName.includes(' ') && !lastName) {
+        const parts = firstName.split(' '); firstName = parts[0]; lastName = parts.slice(1).join(' ');
+      }      const contact = { firstName, lastName, phone, selected: true, source: 'csv', extra: {} };
+      csvHeaders.forEach((h, i) => { if (i !== fnIdx && i !== lnIdx && i !== phIdx) contact.extra[h] = row[i] || ''; });
+      contacts.push(contact); imported++;
+    }
+    closeModal('csvMapperModal'); updateContactsUI(); showToast('Imported ' + imported + ' contacts from CSV');
+  }
+  function importMacContacts() {
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.native) {
+      showToast('Loading contacts from Mac...');
+      window.webkit.messageHandlers.native.postMessage(JSON.stringify({ action: 'getContacts' }));
+    } else { showToast('Mac Contacts import only works in the native app'); }
+  }
+  function contactsLoaded(contactList) {
+    let imported = 0;
+    for (const c of contactList) {
+      if (!c.phone) continue;
+      if (contacts.find(ex => normalizePhone(ex.phone) === normalizePhone(c.phone))) continue;
+      contacts.push({ firstName: c.firstName||'', lastName: c.lastName||'', phone: normalizePhone(c.phone), selected: false, source: 'contacts', extra: {} });
+      imported++;
+    }
+    updateContactsUI(); showToast('Loaded ' + imported + ' contacts from Mac');
+  }
+
+  // ===== COMPOSE =====
+  function insertPlaceholder(text) {
+    const ta = document.getElementById('messageTemplate');
+    const start = ta.selectionStart, end = ta.selectionEnd;
+    ta.value = ta.value.substring(0, start) + text + ta.value.substring(end);
+    ta.focus(); ta.setSelectionRange(start + text.length, start + text.length);
+  }
+  function insertTplPlaceholder(text) {
+    const ta = document.getElementById('tplText');
+    const start = ta.selectionStart, end = ta.selectionEnd;
+    ta.value = ta.value.substring(0, start) + text + ta.value.substring(end);
+    ta.focus(); ta.setSelectionRange(start + text.length, start + text.length);
+  }
+  function updatePlaceholders() {
+    const extra = new Set();
+    contacts.forEach(c => { if (c.extra) Object.keys(c.extra).forEach(k => extra.add(k)); });
+    document.getElementById('customPlaceholders').innerHTML = Array.from(extra).map(k =>
+      '<span class="template-chip" onclick="insertPlaceholder(\'{'+k+'}\')">{'+k+'}</span>'
+    ).join('');
+  }
+  function personalizeMessage(template, contact) {
+    let msg = template;
+    msg = msg.replace(/\{FirstName\}/gi, contact.firstName || '');
+    msg = msg.replace(/\{LastName\}/gi, contact.lastName || '');
+    msg = msg.replace(/\{Phone\}/gi, contact.phone || '');
+    if (contact.extra) { for (const [k, v] of Object.entries(contact.extra)) msg = msg.replace(new RegExp('\\{'+k+'\\}', 'gi'), v); }
+    return msg.trim();
+  }
+  function previewMessages() {
+    const template = document.getElementById('messageTemplate').value;
+    if (!template) { showToast('Write a message first'); return; }
+    const selected = contacts.filter(c => c.selected);
+    if (selected.length === 0) { showToast('Select some contacts first'); return; }
+    const preview = document.getElementById('messagePreview');
+    const toShow = selected.slice(0, 3);
+    preview.innerHTML = toShow.map(c =>
+      '<div style="margin-bottom:12px"><div class="msg-preview-name">'+esc(c.firstName)+' '+esc(c.lastName||'')+' <span class="msg-preview-phone">'+esc(c.phone)+'</span></div>' +
+      '<div class="msg-preview">'+esc(personalizeMessage(template, c))+'</div></div>'
+    ).join('') + (selected.length > 3 ? '<div style="font-size:13px;color:var(--text-secondary)">...and '+(selected.length-3)+' more</div>' : '');
+    document.getElementById('previewCard').style.display = '';
+  }
+
+  // ===== AI GENERATION =====
+  async function generateAIMessage() {
+    const apiKey = document.getElementById('apiKey').value.trim();
+    if (!apiKey) { showToast('Add your Gemini API key in Settings first'); showPage('settings'); return; }
+    const prompt = document.getElementById('aiPrompt').value.trim();
+    if (!prompt) { showToast('Describe what you want to say'); return; }
+    const example = document.getElementById('aiExample').value.trim();
+    const btn = document.getElementById('btnGenerate');
+    btn.disabled = true; btn.textContent = 'Generating...';
+
+    const staffCtx = getStaffContext();
+    const sysPrompt = 'You are a helpful assistant for Futures Church staff. Generate a single SMS/iMessage template based on the description. Use {FirstName} as a placeholder for the recipient\'s name. Keep it warm, friendly, and concise (under 300 characters ideal). Return ONLY the message text, nothing else. ' + staffCtx;
+    let userPrompt = 'Write a message for this purpose: ' + prompt;
+    if (example) userPrompt += '\n\nHere is an example of the tone I want: "' + example + '"';
+
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.native) {
+      window.webkit.messageHandlers.native.postMessage(JSON.stringify({ action: 'generateAI', apiKey, systemPrompt: sysPrompt, userPrompt }));
+    } else {
+      try {
+        const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(apiKey), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ systemInstruction: { parts: [{ text: sysPrompt }] }, contents: [{ parts: [{ text: userPrompt }] }] })
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          const errorMsg = data.error?.message || 'Unknown error';
+          aiGenerationFailed(errorMsg);
+          return;
+        }
+        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+          aiMessageGenerated(data.candidates[0].content.parts[0].text);
+        } else {
+          aiGenerationFailed(data.error?.message || 'No response generated');
+        }
+      } catch(e) {
+        aiGenerationFailed(e.message);
+      }
+    }
+  }
+  function aiGenerationFailed(errorMsg) {
+    showToast('AI error: ' + errorMsg);
+    const btn = document.getElementById('btnGenerate');
+    if (btn) { btn.disabled = false; btn.textContent = 'Generate Message'; }
+  }
+  function aiMessageGenerated(text) {
+    aiGeneratedMessage = text;
+    document.getElementById('aiGeneratedText').textContent = text;
+    document.getElementById('aiResultCard').style.display = '';
+    document.getElementById('btnGenerate').disabled = false;
+    document.getElementById('btnGenerate').textContent = 'Generate Message';
+    showToast('Message generated! Review it below.');
+  }
+  function useGeneratedMessage() {
+    document.getElementById('messageTemplate').value = aiGeneratedMessage;
+    switchComposeMode('custom');
+    showToast('Message loaded into Custom mode');
+  }
+
+  // ===== TEMPLATES =====
+  function openSaveTemplate(idx) {
+    editingTplIdx = idx !== undefined ? idx : -1;
+    document.getElementById('tplModalTitle').textContent = editingTplIdx >= 0 ? 'Edit Template' : 'Save Template';
+    switchTemplateMode('custom');
+    if (editingTplIdx >= 0) {
+      const t = savedTemplates[editingTplIdx];
+      if (t.mode === 'generated') {
+        switchTemplateMode('generated');
+        document.getElementById('tplNameGen').value = t.name;
+        document.getElementById('tplAreaGen').value = t.area;
+        document.getElementById('tplTypeGen').value = t.type;
+        document.getElementById('tplDescription').value = t.description || '';
+        document.getElementById('tplExampleGen').value = t.example || '';
+      } else {
+        document.getElementById('tplName').value = t.name;
+        document.getElementById('tplArea').value = t.area;
+        document.getElementById('tplType').value = t.type;
+        document.getElementById('tplText').value = t.text;
+        document.getElementById('tplExample').value = t.example || '';
+      }
+    } else {
+      document.getElementById('tplName').value = '';
+      document.getElementById('tplArea').value = document.getElementById('staffArea').value || 'General';
+      document.getElementById('tplType').value = 'Reminder';
+      document.getElementById('tplText').value = document.getElementById('messageTemplate').value || '';
+      document.getElementById('tplExample').value = document.getElementById('aiExample').value || '';
+      document.getElementById('tplNameGen').value = '';
+      document.getElementById('tplAreaGen').value = document.getElementById('staffArea').value || 'General';
+      document.getElementById('tplTypeGen').value = 'Reminder';
+      document.getElementById('tplDescription').value = '';
+      document.getElementById('tplExampleGen').value = '';
+    }
+    document.getElementById('saveTemplateModal').classList.add('show');
+  }
+  function saveTemplate() {
+    let t;
+    if (currentTemplateMode === 'generated') {
+      t = {
+        name: document.getElementById('tplNameGen').value.trim(),
+        area: document.getElementById('tplAreaGen').value,
+        type: document.getElementById('tplTypeGen').value,
+        mode: 'generated',
+        description: document.getElementById('tplDescription').value.trim(),
+        example: document.getElementById('tplExampleGen').value.trim()
+      };
+      if (!t.name || !t.description) { showToast('Name and description are required'); return; }
+    } else {
+      t = {
+        name: document.getElementById('tplName').value.trim(),
+        area: document.getElementById('tplArea').value,
+        type: document.getElementById('tplType').value,
+        mode: 'custom',
+        text: document.getElementById('tplText').value.trim(),
+        example: document.getElementById('tplExample').value.trim()
+      };
+      if (!t.name || !t.text) { showToast('Name and message text are required'); return; }
+    }
+    if (editingTplIdx >= 0) savedTemplates[editingTplIdx] = t;
+    else savedTemplates.push(t);
+    localStorage.setItem('futuresTemplates', JSON.stringify(savedTemplates));
+    closeModal('saveTemplateModal'); renderTemplates(); updateProfileDisplay();
+    showToast(editingTplIdx >= 0 ? 'Template updated' : 'Template saved');
+  }
+  function deleteTemplate(idx) {
+    savedTemplates.splice(idx, 1);
+    localStorage.setItem('futuresTemplates', JSON.stringify(savedTemplates));
+    renderTemplates(); updateProfileDisplay();
+  }  async function useTemplate(idx) {
+    const t = savedTemplates[idx];
+    if (t.mode === 'generated') {
+      const apiKey = document.getElementById('apiKey').value.trim();
+      if (!apiKey) { showToast('Add Gemini API key in Settings to use AI templates'); showPage('settings'); return; }
+      showToast('Generating message from template...');
+      const staffCtx = getStaffContext();
+      const sysPrompt = 'You are a helpful assistant for Futures Church staff. Generate a single SMS/iMessage template based on the description. Use {FirstName} as a placeholder for the recipient\'s name. Keep it warm, friendly, and concise (under 300 characters ideal). Return ONLY the message text, nothing else. ' + staffCtx;
+      let userPrompt = 'Write a message for this purpose: ' + t.description;
+      if (t.example) userPrompt += '\n\nHere is an example of the tone I want: "' + t.example + '"';
+      if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.native) {
+        window.webkit.messageHandlers.native.postMessage(JSON.stringify({ action: 'generateAI', apiKey, systemPrompt: sysPrompt, userPrompt }));
+      } else {
+        try {
+          const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(apiKey), {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ systemInstruction: { parts: [{ text: sysPrompt }] }, contents: [{ parts: [{ text: userPrompt }] }] })
+          });
+          const data = await resp.json();
+          if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+            document.getElementById('messageTemplate').value = data.candidates[0].content.parts[0].text;
+            showPage('compose'); showToast('Generated message loaded into compose');
+          } else { showToast('AI error: ' + (data.error?.message || 'Unknown')); }
+        } catch(e) { showToast('AI error: ' + e.message); }
+      }
+    } else {
+      document.getElementById('messageTemplate').value = t.text;
+      if (t.example) document.getElementById('aiExample').value = t.example;
+      showPage('compose'); showToast('Template loaded into compose');
+    }
+  }
+  function renderTemplates() {
+    const filter = document.getElementById('tplFilterArea').value;
+    const filtered = filter ? savedTemplates.filter(t => t.area === filter) : savedTemplates;
+    document.getElementById('templateBadge').textContent = savedTemplates.length;
+    const areas = [...new Set(savedTemplates.map(t => t.area))];
+    const sel = document.getElementById('tplFilterArea');
+    const currentVal = sel.value;
+    sel.innerHTML = '<option value="">All Areas</option>' + areas.map(a => '<option value="'+esc(a)+'">'+esc(a)+'</option>').join('');
+    sel.value = currentVal;
+    if (!filtered.length) {
+      document.getElementById('templatesEmpty').style.display = '';
+      document.getElementById('templatesList').innerHTML = '';
+      return;
+    }
+    document.getElementById('templatesEmpty').style.display = 'none';
+    document.getElementById('templatesList').innerHTML = filtered.map((t, fi) => {
+      const realIdx = savedTemplates.indexOf(t);
+      const badge = '<span class="mode-badge ' + (t.mode || 'custom') + '">' + (t.mode === 'generated' ? 'Generated' : 'Custom') + '</span>';
+      return '<div class="saved-tpl" onclick="useTemplate('+realIdx+')">' +
+        '<div class="saved-tpl-actions"><button onclick="event.stopPropagation();openSaveTemplate('+realIdx+')" title="Edit">✏️</button><button onclick="event.stopPropagation();deleteTemplate('+realIdx+')" title="Delete">🗑</button></div>' +
+        '<div class="saved-tpl-area">'+esc(t.area)+' · '+esc(t.type)+' ' + badge + '</div>' +
+        '<div class="saved-tpl-name">'+esc(t.name)+'</div>' +
+        '<div class="saved-tpl-preview">'+esc((t.mode === 'generated' ? 'Desc: ' + t.description : t.text))+'</div>' +
+      '</div>';
+    }).join('');
+  }
+  function loadTemplateIntoCompose() {
+    const list = document.getElementById('tplPickerList');
+    if (!savedTemplates.length) { showToast('No templates saved yet'); return; }
+    list.innerHTML = savedTemplates.map((t, i) =>
+      '<div class="saved-tpl" onclick="useTemplate('+i+');closeModal(\'tplPickerModal\')">' +
+      '<div class="saved-tpl-area">'+esc(t.area)+' · '+esc(t.type)+'</div>' +
+      '<div class="saved-tpl-name">'+esc(t.name)+'</div>' +
+      '<div class="saved-tpl-preview">'+esc((t.mode === 'generated' ? 'Desc: ' + t.description : t.text))+'</div></div>'
+    ).join('');
+    document.getElementById('tplPickerModal').classList.add('show');
+  }
+
+  // ===== SEND =====
+  function updateSendPage() {
+    const selected = contacts.filter(c => c.selected);
+    const template = document.getElementById('messageTemplate').value;
+    document.getElementById('sendCount').textContent = selected.length;
+    document.getElementById('sendProgressBar').style.display = 'none';
+    document.getElementById('sendStatus').style.display = 'none';
+    const results = document.getElementById('sendResults');
+    if (!template || selected.length === 0) {
+      results.innerHTML = '<div class="empty-state"><h3>'+(!template?'No message composed':'No contacts selected')+'</h3><p>'+(!template?'Go to Compose to write your message':'Go to Contacts and select recipients')+'</p></div>';
+      document.getElementById('btnSend').disabled = true; return;
+    }
+    document.getElementById('btnSend').disabled = false;
+    results.innerHTML = selected.map((c, i) =>
+      '<div class="send-result" id="sendResult'+i+'"><div><div class="send-result-name">'+esc(c.firstName)+' '+esc(c.lastName||'')+'</div><div class="send-result-phone">'+esc(c.phone)+'</div></div><div class="send-result-status pending" id="sendStatus'+i+'"><span class="status-dot pending"></span> Pending</div></div>'
+    ).join('');
+  }
+  async function startSending() {
+    if (sendingInProgress) return;
+    sendingInProgress = true;
+    const selected = contacts.filter(c => c.selected);
+    const template = document.getElementById('messageTemplate').value;
+    const delay = parseFloat(document.getElementById('sendDelay').value) || 0.5;
+    const btnSend = document.getElementById('btnSend');
+    btnSend.disabled = true;
+    btnSend.textContent = 'Sending...';
+    document.getElementById('sendProgressBar').style.display = '';
+    document.getElementById('sendStatus').style.display = '';
+    let sent = 0, failed = 0;
+    for (let i = 0; i < selected.length; i++) {
+      const c = selected[i];
+      const msg = personalizeMessage(template, c);
+      document.getElementById('sendStatus').textContent = 'Sending to '+c.firstName+' '+(c.lastName||'')+' ('+(i+1)+'/'+selected.length+')...';
+      const statusEl = document.getElementById('sendStatus' + i);
+      statusEl.innerHTML = '<span class="status-dot sending"></span> Sending...';
+      const success = await sendSingleMessage(c.phone, msg, i);
+      if (success) { sent++; statusEl.innerHTML = '<span class="status-dot sent"></span> Sent'; statusEl.className = 'send-result-status sent'; }
+      else { failed++; statusEl.innerHTML = '<span class="status-dot failed"></span> Failed'; statusEl.className = 'send-result-status failed'; }
+      document.getElementById('sendProgressFill').style.width = (((i+1)/selected.length)*100)+'%';
+      if (i < selected.length - 1 && delay > 0) await sleep(delay * 1000);
+    }
+    document.getElementById('sendProgressFill').className = 'progress-fill ' + (failed===0?'success':'error');
+    document.getElementById('sendStatus').textContent = 'Done! '+sent+' sent, '+failed+' failed.';
+    btnSend.textContent = 'Finished';
+    await sleep(3000);
+    btnSend.disabled = false;
+    btnSend.textContent = 'Send All Messages';
+    sendingInProgress = false;
+  }
+  function sendSingleMessage(phone, text, index) {
+    return new Promise((resolve) => {
+      if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.native) {
+        window._pendingResolve = window._pendingResolve || {};
+        window._pendingResolve[index] = resolve;
+        window.webkit.messageHandlers.native.postMessage(JSON.stringify({ action: 'sendMessage', phone, text, index }));
+      } else {
+        console.log('[SIM] Send to ' + phone + ': ' + text);
+        setTimeout(() => resolve(true), 500);
+      }
+    });
+  }
+  function messageSent(index, success, error) {
+    if (window._pendingResolve && window._pendingResolve[index]) {
+      window._pendingResolve[index](success);
+      delete window._pendingResolve[index];
+    }
+  }
+
+  // ===== UTILS =====
+  function normalizePhone(phone) {
+    let cleaned = phone.replace(/[^\d+]/g, '');
+    if (/^\d{10}$/.test(cleaned)) cleaned = '+1' + cleaned;
+    if (/^1\d{10}$/.test(cleaned)) cleaned = '+' + cleaned;
+    return cleaned;
+  }
+  function esc(str) { const d = document.createElement('div'); d.textContent = str || ''; return d.innerHTML; }
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+  function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+  // ===== AUTO-UPDATE =====
+  const APP_VERSION = document.querySelector('meta[name="app-version"]').content;
+  const UPDATE_URL = localStorage.getItem('futuresUpdateUrl') || '';
+
+  function compareVersions(a, b) {
+    var pa = a.split('.').map(Number), pb = b.split('.').map(Number);
+    for (var i = 0; i < Math.max(pa.length, pb.length); i++) {
+      var na = pa[i] || 0, nb = pb[i] || 0;
+      if (na > nb) return 1; if (na < nb) return -1;
+    }
+    return 0;
+  }
+
+  function checkForUpdate() {
+    if (!UPDATE_URL) return;
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.native) {
+      window.webkit.messageHandlers.native.postMessage(JSON.stringify({
+        action: 'checkUpdate', url: UPDATE_URL, currentVersion: APP_VERSION
+      }));
+    }
+  }
+
+  function updateAvailable(remoteVersion, htmlUrl) {
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.native) {
+      window.webkit.messageHandlers.native.postMessage(JSON.stringify({
+        action: 'applyUpdate', url: htmlUrl
+      }));
+    }
+  }
+
+  function updateApplied() {
+    document.getElementById('updateBanner').style.display = '';
+  }
+
+  function noUpdateNeeded() { /* current version is latest */ }
+
+  // Init
+  loadSettings();
+  updateContactsUI();
+  renderTemplates();
+  document.getElementById('versionDisplay').textContent = APP_VERSION;
+  setTimeout(checkForUpdate, 2000);
+</script>
+</body>
+</html>
