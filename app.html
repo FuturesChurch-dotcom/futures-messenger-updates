@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Futures Messenger</title>
-<meta name="app-version" content="2.1.0">
+<meta name="app-version" content="2.2.0">
 <style>
   :root {
     --bg: #f7f8fa;
@@ -112,6 +112,7 @@
   .tag-csv { background: #ecfdf5; color: #059669; }
   .tag-manual { background: #f0e8fd; color: #7c3aed; }
   .tag-contacts { background: #ecfdf5; color: var(--accent); }
+  .tag-list { background: #e0f2fe; color: #0369a1; }
   .empty-state { text-align: center; padding: 48px 24px; color: var(--text-secondary); }
   .empty-state svg { width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.3; }
   .empty-state h3 { font-size: 16px; color: var(--text); margin-bottom: 8px; }
@@ -230,11 +231,19 @@
     <div class="header"><h1>Contacts</h1><p>Import from a PCO People CSV, add manually, or pull from Mac Contacts</p></div>
     <div class="content">
       <div class="card">
-        <div class="btn-row" style="margin-bottom:16px">
+        <div class="btn-row" style="margin-bottom:12px">
           <button class="btn btn-primary" onclick="triggerCSVImport()">Import CSV</button>
           <button class="btn btn-secondary" onclick="openAddContact()">Add Manually</button>
           <button class="btn btn-secondary" onclick="importMacContacts()">From Mac Contacts</button>
           <button class="btn btn-danger btn-sm" onclick="clearSelected()" id="btnClearSelected" style="display:none">Remove Selected</button>
+        </div>
+        <div id="listsBar" style="display:none;margin-bottom:16px;padding:12px 16px;background:var(--accent-light);border-radius:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-weight:600;font-size:14px;color:var(--text)">📋 Saved Lists</span>
+          <select id="listSelect" onchange="loadSavedList()" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);font-size:13px;min-width:160px">
+            <option value="">Select a list...</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="openSaveListModal()">Save Selected as List</button>
+          <button class="btn btn-danger btn-sm" id="btnDeleteList" onclick="deleteSavedList()" style="display:none">Delete List</button>
         </div>
         <div id="contactsEmpty" class="empty-state">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
@@ -477,6 +486,18 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="saveListModal">
+  <div class="modal">
+    <h2>Save Contact List</h2>
+    <p style="color:var(--text-secondary);font-size:14px;margin-bottom:12px" id="saveListCount"></p>
+    <div class="form-group"><label>List Name</label><input type="text" id="saveListName" placeholder="e.g., High School Boys, Volunteers"></div>
+    <div class="btn-row" style="justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-secondary" onclick="closeModal('saveListModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveContactList()">Save List</button>
+    </div>
+  </div>
+</div>
+
 <!-- CSV Column Mapper Modal -->
 <div class="modal-overlay" id="csvMapperModal">
   <div class="modal">
@@ -603,6 +624,7 @@
 <input type="file" id="csvFileInput" accept=".csv,.txt,.tsv" style="display:none" onchange="handleCSVFile(this)">
 <script>
   let contacts = [];
+  let savedLists = JSON.parse(localStorage.getItem('futuresSavedLists') || '[]');
   let csvRawData = null;
   let csvHeaders = [];
   let sendingInProgress = false;
@@ -672,6 +694,87 @@
     return ctx;
   }
 
+  // ===== SAVED LISTS =====
+  function updateListsUI() {
+    var bar = document.getElementById('listsBar');
+    var sel = document.getElementById('listSelect');
+    bar.style.display = (contacts.length > 0 || savedLists.length > 0) ? 'flex' : 'none';
+    var val = sel.value;
+    sel.innerHTML = '<option value="">Select a list...</option>' +
+      savedLists.map(function(l, i) {
+        return '<option value="' + i + '">' + esc(l.name) + ' (' + l.contacts.length + ')</option>';
+      }).join('');
+    sel.value = val;
+    document.getElementById('btnDeleteList').style.display = sel.value !== '' ? '' : 'none';
+  }
+
+  function openSaveListModal() {
+    var selected = contacts.filter(function(c) { return c.selected; });
+    if (selected.length === 0) { showToast('Select contacts first to save as a list'); return; }
+    document.getElementById('saveListCount').textContent = selected.length + ' contact' + (selected.length !== 1 ? 's' : '') + ' selected';
+    document.getElementById('saveListName').value = '';
+    document.getElementById('saveListModal').classList.add('show');
+  }
+
+  function saveContactList() {
+    var name = document.getElementById('saveListName').value.trim();
+    if (!name) { showToast('Enter a name for this list'); return; }
+    var selected = contacts.filter(function(c) { return c.selected; });
+    if (selected.length === 0) { showToast('No contacts selected'); return; }
+    var listContacts = selected.map(function(c) {
+      return { firstName: c.firstName, lastName: c.lastName || '', phone: c.phone };
+    });
+    // Check if name exists, offer to overwrite
+    var existing = savedLists.findIndex(function(l) { return l.name === name; });
+    if (existing >= 0) {
+      savedLists[existing].contacts = listContacts;
+    } else {
+      savedLists.push({ name: name, contacts: listContacts });
+    }
+    localStorage.setItem('futuresSavedLists', JSON.stringify(savedLists));
+    closeModal('saveListModal');
+    updateListsUI();
+    showToast('List "' + name + '" saved with ' + listContacts.length + ' contacts');
+  }
+
+  function loadSavedList() {
+    var sel = document.getElementById('listSelect');
+    var idx = parseInt(sel.value);
+    document.getElementById('btnDeleteList').style.display = sel.value !== '' ? '' : 'none';
+    if (isNaN(idx) || !savedLists[idx]) return;
+    var list = savedLists[idx];
+    // Deselect all first
+    contacts.forEach(function(c) { c.selected = false; });
+    var loaded = 0;
+    list.contacts.forEach(function(lc) {
+      var phone = normalizePhone(lc.phone);
+      // Find existing contact
+      var found = contacts.find(function(c) { return normalizePhone(c.phone) === phone; });
+      if (found) {
+        found.selected = true;
+        loaded++;
+      } else {
+        // Add contact from list
+        contacts.push({ firstName: lc.firstName, lastName: lc.lastName || '', phone: phone, selected: true, source: 'list', extra: {} });
+        loaded++;
+      }
+    });
+    updateContactsUI();
+    showToast('Loaded "' + list.name + '" — ' + loaded + ' contacts selected');
+  }
+
+  function deleteSavedList() {
+    var sel = document.getElementById('listSelect');
+    var idx = parseInt(sel.value);
+    if (isNaN(idx) || !savedLists[idx]) return;
+    var name = savedLists[idx].name;
+    savedLists.splice(idx, 1);
+    localStorage.setItem('futuresSavedLists', JSON.stringify(savedLists));
+    sel.value = '';
+    updateListsUI();
+    showToast('List "' + name + '" deleted');
+  }
+
   // ===== PAGE NAV =====
   function showPage(page) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -710,6 +813,7 @@
     const selected = contacts.filter(c => c.selected);
     badge.textContent = contacts.length;
     document.getElementById('btnClearSelected').style.display = selected.length > 0 ? '' : 'none';
+    updateListsUI();
     if (contacts.length === 0) { empty.style.display = ''; table.style.display = 'none'; return; }
     empty.style.display = 'none'; table.style.display = '';
     body.innerHTML = contacts.map((c, i) =>
