@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Futures Messenger</title>
-<meta name="app-version" content="2.2.0">
+<meta name="app-version" content="2.3.0">
 <style>
   :root {
     --bg: #f7f8fa;
@@ -113,6 +113,7 @@
   .tag-manual { background: #f0e8fd; color: #7c3aed; }
   .tag-contacts { background: #ecfdf5; color: var(--accent); }
   .tag-list { background: #e0f2fe; color: #0369a1; }
+  .tag-pco { background: #eef2ff; color: #4338ca; }
   .empty-state { text-align: center; padding: 48px 24px; color: var(--text-secondary); }
   .empty-state svg { width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.3; }
   .empty-state h3 { font-size: 16px; color: var(--text); margin-bottom: 8px; }
@@ -235,6 +236,7 @@
           <button class="btn btn-primary" onclick="triggerCSVImport()">Import CSV</button>
           <button class="btn btn-secondary" onclick="openAddContact()">Add Manually</button>
           <button class="btn btn-secondary" onclick="importMacContacts()">From Mac Contacts</button>
+          <button class="btn btn-secondary" onclick="openPCOListPicker()" style="background:#4c8bf5;color:#fff;border-color:#4c8bf5">From PCO</button>
           <button class="btn btn-danger btn-sm" onclick="clearSelected()" id="btnClearSelected" style="display:none">Remove Selected</button>
         </div>
         <div id="listsBar" style="display:none;margin-bottom:16px;padding:12px 16px;background:var(--accent-light);border-radius:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -443,6 +445,14 @@
         </div>
       </div>
       <div class="card">
+        <div class="card-title">Planning Center Online</div>
+        <div class="hint" style="margin-bottom:12px">Connect to PCO People to pull contact lists directly. Get your Personal Access Token from <strong>api.planningcenteronline.com</strong>.</div>
+        <div class="form-row">
+          <div class="form-group"><label>Application ID</label><input type="password" id="pcoAppId" placeholder="Your PCO App ID" onchange="saveSettings()"></div>
+          <div class="form-group"><label>Secret</label><input type="password" id="pcoSecret" placeholder="Your PCO Secret" onchange="saveSettings()"></div>
+        </div>
+      </div>
+      <div class="card">
         <div class="card-title">Message Sending</div>
         <div class="form-group">
           <label>Delay between messages (seconds)</label>
@@ -499,6 +509,21 @@
 </div>
 
 <!-- CSV Column Mapper Modal -->
+<div class="modal-overlay" id="pcoListModal">
+  <div class="modal" style="max-width:550px">
+    <h2>Import from Planning Center</h2>
+    <div id="pcoListLoading" style="text-align:center;padding:20px;color:var(--text-secondary)">Loading lists from PCO...</div>
+    <div id="pcoListContent" style="display:none">
+      <p style="color:var(--text-secondary);font-size:14px;margin-bottom:12px">Select a list to import contacts from:</p>
+      <div id="pcoListItems" style="max-height:350px;overflow-y:auto"></div>
+    </div>
+    <div id="pcoListError" style="display:none;color:#dc2626;padding:12px;background:#fef2f2;border-radius:8px;font-size:14px"></div>
+    <div class="btn-row" style="justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-secondary" onclick="closeModal('pcoListModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="csvMapperModal">
   <div class="modal">
     <h2>Map CSV Columns</h2>
@@ -644,7 +669,9 @@
       apiKey: document.getElementById('apiKey').value,
       sendDelay: document.getElementById('sendDelay').value,
       signMessages: document.getElementById('signMessages').checked,
-      updateUrl: document.getElementById('updateUrl').value
+      updateUrl: document.getElementById('updateUrl').value,
+      pcoAppId: document.getElementById('pcoAppId').value,
+      pcoSecret: document.getElementById('pcoSecret').value
     };
     localStorage.setItem('futuresSettings', JSON.stringify(s));
     localStorage.setItem('futuresUpdateUrl', s.updateUrl || '');
@@ -661,6 +688,8 @@
       if (s.sendDelay) document.getElementById('sendDelay').value = s.sendDelay;
       document.getElementById('signMessages').checked = s.signMessages !== false;
       if (s.updateUrl) document.getElementById('updateUrl').value = s.updateUrl;
+      if (s.pcoAppId) document.getElementById('pcoAppId').value = s.pcoAppId;
+      if (s.pcoSecret) document.getElementById('pcoSecret').value = s.pcoSecret;
     } catch(e) {}
     updateProfileDisplay();
   }
@@ -692,6 +721,85 @@
     if (area) ctx += 'They are messaging for the ' + area + ' ministry area. ';
     if (name && document.getElementById('signMessages').checked) ctx += 'Sign the message as ' + name + '. ';
     return ctx;
+  }
+
+  // ===== PCO INTEGRATION =====
+  function openPCOListPicker() {
+    var s = JSON.parse(localStorage.getItem('futuresSettings') || '{}');
+    if (!s.pcoAppId || !s.pcoSecret) {
+      showToast('Add your PCO App ID and Secret in Settings first');
+      return;
+    }
+    document.getElementById('pcoListLoading').style.display = '';
+    document.getElementById('pcoListContent').style.display = 'none';
+    document.getElementById('pcoListError').style.display = 'none';
+    document.getElementById('pcoListModal').classList.add('show');
+    // Fetch lists via native bridge
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.native) {
+      window.webkit.messageHandlers.native.postMessage(JSON.stringify({
+        action: 'pcoFetchLists',
+        appId: s.pcoAppId,
+        secret: s.pcoSecret
+      }));
+    } else {
+      pcoListError('Native bridge not available — PCO import requires the desktop app.');
+    }
+  }
+
+  function pcoListsLoaded(lists) {
+    document.getElementById('pcoListLoading').style.display = 'none';
+    document.getElementById('pcoListContent').style.display = '';
+    var container = document.getElementById('pcoListItems');
+    if (!lists || lists.length === 0) {
+      container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-secondary)">No lists found in PCO People.</div>';
+      return;
+    }
+    container.innerHTML = lists.map(function(l) {
+      return '<div style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:background 0.15s" ' +
+        'onmouseover="this.style.background=\'var(--accent-light)\'" onmouseout="this.style.background=\'#fff\'" ' +
+        'onclick="importPCOList(\'' + l.id + '\', \'' + esc(l.name).replace(/'/g, "\\'") + '\')">' +
+        '<strong>' + esc(l.name) + '</strong>' +
+        (l.total ? '<span style="color:var(--text-secondary);font-size:13px;margin-left:8px">' + l.total + ' people</span>' : '') +
+        (l.description ? '<div style="font-size:13px;color:var(--text-secondary);margin-top:2px">' + esc(l.description) + '</div>' : '') +
+        '</div>';
+    }).join('');
+  }
+
+  function pcoListError(msg) {
+    document.getElementById('pcoListLoading').style.display = 'none';
+    document.getElementById('pcoListError').style.display = '';
+    document.getElementById('pcoListError').textContent = msg;
+  }
+
+  function importPCOList(listId, listName) {
+    document.getElementById('pcoListContent').style.display = 'none';
+    document.getElementById('pcoListLoading').style.display = '';
+    document.getElementById('pcoListLoading').textContent = 'Importing contacts from "' + listName + '"...';
+    var s = JSON.parse(localStorage.getItem('futuresSettings') || '{}');
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.native) {
+      window.webkit.messageHandlers.native.postMessage(JSON.stringify({
+        action: 'pcoFetchListPeople',
+        appId: s.pcoAppId,
+        secret: s.pcoSecret,
+        listId: listId,
+        listName: listName
+      }));
+    }
+  }
+
+  function pcoContactsLoaded(people, listName) {
+    closeModal('pcoListModal');
+    var imported = 0;
+    for (var i = 0; i < people.length; i++) {
+      var p = people[i];
+      if (!p.phone) continue;
+      var phone = normalizePhone(p.phone);
+      if (contacts.find(function(c) { return normalizePhone(c.phone) === phone; })) continue;
+      contacts.push({ firstName: p.firstName || '', lastName: p.lastName || '', phone: phone, selected: true, source: 'pco', extra: {} });
+      imported++;
+    }
+    updateContactsUI();
+    showToast('Imported ' + imported + ' contacts from PCO list "' + listName + '"');
   }
 
   // ===== SAVED LISTS =====
