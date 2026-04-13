@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Futures Messenger</title>
-<meta name="app-version" content="2.5.0">
+<meta name="app-version" content="2.6.0">
 <style>
   :root {
     --bg: #f7f8fa;
@@ -246,6 +246,9 @@
           </select>
           <button class="btn btn-primary btn-sm" onclick="openSaveListModal()">Save Selected as List</button>
           <button class="btn btn-danger btn-sm" id="btnDeleteList" onclick="deleteSavedList()" style="display:none">Delete List</button>
+        </div>
+        <div id="contactsSearch" style="display:none;margin-bottom:12px">
+          <input type="text" id="contactSearchInput" placeholder="Search contacts by name..." oninput="updateContactsUI()" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--bg);color:var(--text)">
         </div>
         <div id="contactsEmpty" class="empty-state">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
@@ -968,19 +971,33 @@
     const empty = document.getElementById('contactsEmpty');
     const table = document.getElementById('contactsTable');
     const body = document.getElementById('contactsBody');
+    const searchBox = document.getElementById('contactsSearch');
+    const searchInput = document.getElementById('contactSearchInput');
     const selected = contacts.filter(c => c.selected);
     badge.textContent = contacts.length;
     document.getElementById('btnClearSelected').style.display = selected.length > 0 ? '' : 'none';
     updateListsUI();
-    if (contacts.length === 0) { empty.style.display = ''; table.style.display = 'none'; return; }
-    empty.style.display = 'none'; table.style.display = '';
-    body.innerHTML = contacts.map((c, i) =>
-      '<tr><td><input type="checkbox" '+(c.selected?'checked':'')+' onchange="toggleContact('+i+',this.checked)"></td>' +
+    if (contacts.length === 0) { empty.style.display = ''; table.style.display = 'none'; searchBox.style.display = 'none'; return; }
+    empty.style.display = 'none'; table.style.display = ''; searchBox.style.display = '';
+    var query = (searchInput.value || '').toLowerCase().trim();
+    var filtered = contacts.map(function(c, i) { return {c: c, i: i}; });
+    if (query) {
+      filtered = filtered.filter(function(item) {
+        var full = ((item.c.firstName || '') + ' ' + (item.c.lastName || '')).toLowerCase();
+        return full.indexOf(query) !== -1;
+      });
+    }
+    body.innerHTML = filtered.map(function(item) {
+      var c = item.c, i = item.i;
+      return '<tr><td><input type="checkbox" '+(c.selected?'checked':'')+' onchange="toggleContact('+i+',this.checked)"></td>' +
       '<td><strong>'+esc(c.firstName)+'</strong> '+esc(c.lastName||'')+'</td>' +
       '<td>'+esc(c.phone)+'</td>' +
       '<td><span class="tag tag-'+c.source+'">'+c.source+'</span></td>' +
-      '<td><button class="btn btn-sm btn-secondary" onclick="removeContact('+i+')">Remove</button></td></tr>'
-    ).join('');
+      '<td><button class="btn btn-sm btn-secondary" onclick="removeContact('+i+')">Remove</button></td></tr>';
+    }).join('');
+    if (query && filtered.length === 0) {
+      body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-secondary)">No contacts matching "' + esc(query) + '"</td></tr>';
+    }
   }
   function toggleContact(i, checked) { contacts[i].selected = checked; updateContactsUI(); }
   function toggleSelectAll(checked) { contacts.forEach(c => c.selected = checked); updateContactsUI(); }
