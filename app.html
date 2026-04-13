@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Futures Messenger</title>
-<meta name="app-version" content="2.4.0">
+<meta name="app-version" content="2.5.0">
 <style>
   :root {
     --bg: #f7f8fa;
@@ -1436,15 +1436,19 @@
     return 0;
   }
 
+  function proxyFetch(url) {
+    return fetch(PCO_PROXY + '?url=' + encodeURIComponent(url));
+  }
+
   async function checkForUpdate() {
     if (!UPDATE_URL) return;
     try {
-      var resp = await fetch(UPDATE_URL, {cache: 'no-store'});
+      var resp = await proxyFetch(UPDATE_URL);
       if (!resp.ok) return;
       var info = await resp.json();
       if (info.version && compareVersions(info.version, APP_VERSION) > 0 && info.html_url) {
-        // Download the new HTML
-        var htmlResp = await fetch(info.html_url, {cache: 'no-store'});
+        // Download the new HTML via proxy
+        var htmlResp = await proxyFetch(info.html_url);
         if (!htmlResp.ok) return;
         var newHtml = await htmlResp.text();
         if (newHtml.indexOf('<!DOCTYPE') === -1 && newHtml.indexOf('<!doctype') === -1) return;
