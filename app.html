@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Futures Messenger</title>
-<meta name="app-version" content="2.3.0">
+<meta name="app-version" content="2.4.0">
 <style>
   :root {
     --bg: #f7f8fa;
@@ -1425,28 +1425,31 @@
     return 0;
   }
 
-  function checkForUpdate() {
+  async function checkForUpdate() {
     if (!UPDATE_URL) return;
-    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.native) {
-      window.webkit.messageHandlers.native.postMessage(JSON.stringify({
-        action: 'checkUpdate', url: UPDATE_URL, currentVersion: APP_VERSION
-      }));
-    }
+    try {
+      var resp = await fetch(UPDATE_URL, {cache: 'no-store'});
+      if (!resp.ok) return;
+      var info = await resp.json();
+      if (info.version && compareVersions(info.version, APP_VERSION) > 0 && info.html_url) {
+        applyUpdate(info.html_url, info.version);
+      }
+    } catch(e) { /* silently fail update check */ }
   }
 
-  function updateAvailable(remoteVersion, htmlUrl) {
-    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.native) {
-      window.webkit.messageHandlers.native.postMessage(JSON.stringify({
-        action: 'applyUpdate', url: htmlUrl
-      }));
-    }
+  async function applyUpdate(htmlUrl, newVersion) {
+    try {
+      var resp = await fetch(PCO_PROXY.replace(/\/$/, '') + '/apply-update', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({url: htmlUrl})
+      });
+      if (resp.ok) {
+        document.getElementById('updateBanner').style.display = '';
+        document.getElementById('updateBanner').innerHTML = '✅ Updated to v' + (newVersion||'latest') + '! <strong>Relaunch the app</strong> to use the new version. <span style="float:right;cursor:pointer;opacity:0.8" onclick="this.parentElement.style.display=\'none\'">✕</span>';
+      }
+    } catch(e) { /* proxy not running or update failed - silently fail */ }
   }
-
-  function updateApplied() {
-    document.getElementById('updateBanner').style.display = '';
-  }
-
-  function noUpdateNeeded() { /* current version is latest */ }
 
   // Init
   loadSettings();
