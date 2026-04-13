@@ -221,7 +221,7 @@
     Settings
   </div>
   <div style="margin-top:auto;padding:16px 20px;font-size:11px;color:rgba(255,255,255,0.25);border-top:1px solid rgba(255,255,255,0.06)">
-    Futures Messenger v2.0<br><span style="font-size:10px">Developed by Benjamin Evans</span>
+    Futures Messenger <span id="footerVersion"></span><br><span style="font-size:10px">Developed by Benjamin Evans</span>
   </div>
 </div>
 <div class="main">
@@ -1306,6 +1306,7 @@
   updateContactsUI();
   renderTemplates();
   document.getElementById('versionDisplay').textContent = APP_VERSION;
+  document.getElementById('footerVersion').textContent = 'v' + APP_VERSION;
   setTimeout(checkForUpdate, 2000);
 </script>
 </body>
