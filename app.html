@@ -724,25 +724,39 @@
   }
 
   // ===== PCO INTEGRATION =====
-  function openPCOListPicker() {
+  var PCO_PROXY = 'http://127.0.0.1:19876/';
+  function pcoFetch(url, appId, secret) {
+    var proxyUrl = PCO_PROXY + '?url=' + encodeURIComponent(url) + '&app_id=' + encodeURIComponent(appId) + '&secret=' + encodeURIComponent(secret);
+    return fetch(proxyUrl).then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+  }
+
+  async function openPCOListPicker() {
     var s = JSON.parse(localStorage.getItem('futuresSettings') || '{}');
     if (!s.pcoAppId || !s.pcoSecret) {
       showToast('Add your PCO App ID and Secret in Settings first');
       return;
     }
     document.getElementById('pcoListLoading').style.display = '';
+    document.getElementById('pcoListLoading').textContent = 'Loading lists from PCO...';
     document.getElementById('pcoListContent').style.display = 'none';
     document.getElementById('pcoListError').style.display = 'none';
     document.getElementById('pcoListModal').classList.add('show');
-    // Fetch lists via native bridge
-    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.native) {
-      window.webkit.messageHandlers.native.postMessage(JSON.stringify({
-        action: 'pcoFetchLists',
-        appId: s.pcoAppId,
-        secret: s.pcoSecret
-      }));
-    } else {
-      pcoListError('Native bridge not available — PCO import requires the desktop app.');
+    try {
+      var allLists = [];
+      var url = 'https://api.planningcenteronline.com/people/v2/lists?per_page=100';
+      while (url) {
+        var resp = await pcoFetch(url, s.pcoAppId, s.pcoSecret);
+        if (!resp || !resp.data) { pcoListError('Failed to fetch lists — check your PCO credentials in Settings.'); return; }
+        for (var i = 0; i < resp.data.length; i++) {
+          var l = resp.data[i];
+          allLists.push({ id: l.id, name: l.attributes.name || 'Unnamed List', description: l.attributes.description || '', total: l.attributes.total_people || 0 });
+        }
+        url = (resp.links && resp.links.next) ? resp.links.next : null;
+      }
+      allLists.sort(function(a, b) { return a.name.localeCompare(b.name); });
+      pcoListsLoaded(allLists);
+    } catch(e) {
+      pcoListError('Error: ' + e.message);
     }
   }
 
@@ -760,7 +774,7 @@
         'onclick="importPCOList(\'' + l.id + '\', \'' + esc(l.name).replace(/'/g, "\\'") + '\')">' +
         '<strong>' + esc(l.name) + '</strong>' +
         (l.total ? '<span style="color:var(--text-secondary);font-size:13px;margin-left:8px">' + l.total + ' people</span>' : '') +
-        (l.description ? '<div style="font-size:13px;color:var(--text-secondary);margin-top:2px">' + esc(l.description) + '</div>' : '') +
+        (l.description ? '<div style="font-size:13px;color:var(--text-secondary);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">' + esc(l.description) + '</div>' : '') +
         '</div>';
     }).join('');
   }
@@ -771,19 +785,44 @@
     document.getElementById('pcoListError').textContent = msg;
   }
 
-  function importPCOList(listId, listName) {
+  async function importPCOList(listId, listName) {
     document.getElementById('pcoListContent').style.display = 'none';
     document.getElementById('pcoListLoading').style.display = '';
     document.getElementById('pcoListLoading').textContent = 'Importing contacts from "' + listName + '"...';
     var s = JSON.parse(localStorage.getItem('futuresSettings') || '{}');
-    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.native) {
-      window.webkit.messageHandlers.native.postMessage(JSON.stringify({
-        action: 'pcoFetchListPeople',
-        appId: s.pcoAppId,
-        secret: s.pcoSecret,
-        listId: listId,
-        listName: listName
-      }));
+    try {
+      var people = [];
+      var url = 'https://api.planningcenteronline.com/people/v2/lists/' + listId + '/people?per_page=100&include=phone_numbers';
+      while (url) {
+        var resp = await pcoFetch(url, s.pcoAppId, s.pcoSecret);
+        if (!resp || !resp.data) break;
+        var phoneMap = {};
+        if (resp.included) {
+          for (var j = 0; j < resp.included.length; j++) {
+            var inc = resp.included[j];
+            if (inc.type === 'PhoneNumber') {
+              var personId = (inc.relationships && inc.relationships.person && inc.relationships.person.data) ? inc.relationships.person.data.id : null;
+              if (!personId && inc.links && inc.links.self) { var m = inc.links.self.match(/people\/(\d+)/); if (m) personId = m[1]; }
+              if (personId && inc.attributes && inc.attributes.number) { if (!phoneMap[personId]) phoneMap[personId] = inc.attributes.number; }
+            }
+          }
+        }
+        for (var i = 0; i < resp.data.length; i++) {
+          var p = resp.data[i];
+          var phone = phoneMap[p.id] || '';
+          if (!phone) {
+            try {
+              var phoneResp = await pcoFetch('https://api.planningcenteronline.com/people/v2/people/' + p.id + '/phone_numbers', s.pcoAppId, s.pcoSecret);
+              if (phoneResp && phoneResp.data && phoneResp.data.length > 0) phone = phoneResp.data[0].attributes.number || '';
+            } catch(e) {}
+          }
+          people.push({ firstName: p.attributes.first_name || '', lastName: p.attributes.last_name || '', phone: phone });
+        }
+        url = (resp.links && resp.links.next) ? resp.links.next : null;
+      }
+      pcoContactsLoaded(people, listName);
+    } catch(e) {
+      pcoListError('Error importing: ' + e.message);
     }
   }
 
