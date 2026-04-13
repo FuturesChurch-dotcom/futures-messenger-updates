@@ -1163,7 +1163,7 @@
 
   // ===== AUTO-UPDATE =====
   const APP_VERSION = document.querySelector('meta[name="app-version"]').content;
-  const UPDATE_URL = localStorage.getItem('futuresUpdateUrl') || '';
+  const UPDATE_URL = localStorage.getItem('futuresUpdateUrl') || 'https://futureschurch-dotcom.github.io/futures-messenger-updates/update.json';
 
   function compareVersions(a, b) {
     var pa = a.split('.').map(Number), pb = b.split('.').map(Number);
